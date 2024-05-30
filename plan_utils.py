@@ -80,9 +80,7 @@ def scale_feature(feature_statistics, feature, node):
         return feature_statistics[feature]["value_dict"][node["Node Type"]]
 
 
-def generate_seqs_encoding(
-    seq, op_name_to_one_hot, plan_parameters, feature_statistics
-):
+def generate_seqs_encoding(seq, op_name_to_one_hot, plan_parameters, feature_statistics):
     seq_encoding = []
     for node in seq:
         # add op_name encoding
@@ -146,81 +144,62 @@ def get_attention_mask(adj, seq_length, pad_length, node_length):
 
 def get_loss_mask(seq_length, pad_length, node_length, height, loss_weight=0.5):
     seq_length = int(seq_length / node_length)
+    assert seq_length == len(height)
     loss_mask = np.zeros((pad_length))
     loss_mask[:seq_length] = np.power(loss_weight, np.array(height))
     loss_mask = torch.from_numpy(loss_mask).float()
     return loss_mask
 
 
-# get a plan's encoding
-def get_plan_encoding(
-    plan, configs, op_name_to_one_hot, plan_parameters, feature_statistics
-):
+def get_plan_encoding(plan, configs, op_name_to_one_hot, plan_parameters, feature_statistics):
     """
+    Obtaining a plan encoding
     plan: a plan read from json file
     pad_length: int, the length of the padded seqs (the number of nodes in the plan)
     """
-    seq, run_times, adjs, heights, database_id = get_plan_sequence(
-        plan, configs["pad_length"]
-    )
+    seq, run_times, adjs, heights, database_id = get_plan_sequence(plan, configs["pad_length"])
     run_times = np.array(run_times).astype(np.float32) / configs["max_runtime"] + 1e-7
     run_times = torch.from_numpy(run_times)
-    seq_encoding = generate_seqs_encoding(
-        seq, op_name_to_one_hot, plan_parameters, feature_statistics
-    )
+    seq_encoding = generate_seqs_encoding(seq, op_name_to_one_hot, plan_parameters, feature_statistics)
+
+    assert len(seq) == len(heights)
 
     # pad seq_encoding
-    seq_encoding, seq_length = pad_sequence(
-        seq_encoding,
-        padding_value=0,
-        node_length=configs["node_length"],
-        max_length=configs["pad_length"],
-    )
+    seq_encoding, seq_length = pad_sequence(seq_encoding,
+                                            padding_value=0,
+                                            node_length=configs["node_length"],
+                                            max_length=configs["pad_length"])
 
     # get attention mask
-    attention_mask = get_attention_mask(
-        adjs, seq_length, configs["pad_length"], configs["node_length"]
-    )
+    attention_mask = get_attention_mask(adjs, seq_length, configs["pad_length"], configs["node_length"])
 
     # get loss mask
-    loss_mask = get_loss_mask(
-        seq_length,
-        configs["pad_length"],
-        configs["node_length"],
-        heights,
-        configs["loss_weight"],
-    )
+    loss_mask = get_loss_mask(seq_length,
+                              configs["pad_length"],
+                              configs["node_length"],
+                              heights,
+                              configs["loss_weight"])
 
     return seq_encoding, run_times, attention_mask, loss_mask, database_id
 
 
-def process_plans(
-    configs,
-    op_name_to_one_hot,
-    plan_parameters,
-    feature_statistics,
-    pre_process_path="data/workload1/plans_meta.pkl",
-):
-    if os.path.exists(os.path.join(ROOT_DIR, pre_process_path)):
-        plans_meta = load_pickle(os.path.join(ROOT_DIR, pre_process_path))
-        return plans_meta
+def get_plan_encodings(configs, op_name_to_one_hot, plan_parameters, feature_statistics,
+                       pre_process_path="data/training_workloads/plans_meta.pkl"):
+    #if os.path.exists(os.path.join(ROOT_DIR, pre_process_path)):
+    #    plan_encodings = load_pickle(os.path.join(ROOT_DIR, pre_process_path))
+    #    return plan_encodings
 
-    # read plans
-    plans = read_workload_runs(
-        os.path.join(configs["plans_dir"]), db_names=workloads, verbose=True
-    )
+    plans = read_workload_runs(os.path.join(configs["plans_dir"]), db_names=workloads, verbose=True)
 
-    print("generating encoding...")
-    plans_meta = []
+    print("Generating plan encoding...")
+    plan_encodings = []
     for plan in tqdm(plans):
         # get plan encoding, plan_meta: (seq_encoding, run_times, attention_mask, loss_mask, database_id)
-        plan_mata = get_plan_encoding(
-            plan, configs, op_name_to_one_hot, plan_parameters, feature_statistics
-        )
-        plans_meta.append(plan_mata)
+        plan_encoding = get_plan_encoding(plan, configs, op_name_to_one_hot, plan_parameters, feature_statistics)
+        plan_encodings.append(plan_encoding)
 
-    save_pickle(plans_meta, os.path.join(ROOT_DIR, pre_process_path))
-    return plans_meta
+    save_pickle(plan_encodings, os.path.join(ROOT_DIR, pre_process_path))
+    return plan_encodings
 
 
 def prepare_dataset(data):

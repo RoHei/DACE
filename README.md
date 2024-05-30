@@ -26,7 +26,7 @@ Before running the code, please download the data from this
 Modify ROOT_DIR in utils.py to your own path.
 
 ### Filtering Plans and Gathering Statistics
-To filter out plans and gather statistical data, run:
+To filter out plans with a shorter runtime than 100ms and gather feature statistics, run:
 ```bash
 python setup.py --filter_plans --get_statistic
 ```
@@ -37,7 +37,7 @@ To get plan encodings, run:
 python run.py --process_plans
 ```
 
-### Testing All Databases
+### Testing all databases
 To sequentially use each database as a test set while treating the remaining databases as a training set, execute:
 ```bash
 python run.py --test_all

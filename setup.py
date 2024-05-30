@@ -5,8 +5,8 @@ from utils import *
 set_seed(123)
 
 
-# filter out plans with runtime < 100
 def filter_plans():
+    # filter out plans with runtime < 100
     def filter(original_plans):
         filtered_plans = []
         for plan in original_plans:
@@ -16,34 +16,27 @@ def filter_plans():
         return filtered_plans
 
     for workload in workloads:
-        with open(
-            os.path.join(ROOT_DIR, "data/workload1/{}".format(workload)) + ".json", "r"
-        ) as f:
+        with open(os.path.join(ROOT_DIR, "data/training_workloads/{}".format(workload)) + ".json", "r") as f:
             content = f.readlines()
         for line in content:
             plans = json.loads(line)
-        filted_plans = filter(plans)
-        assert len(filted_plans) >= 10000
-        filted_plans = random.sample(filted_plans, 10000)
-        print("workload: ", workload, "filted plans: ", len(filted_plans))
-        with open(
-            os.path.join(ROOT_DIR, "data/workload1/{}".format(workload))
-            + "_filted.json",
-            "w",
-        ) as f:
-            json.dump(filted_plans, f)
+        filtered_plans = filter(plans)
+        assert len(filtered_plans) >= 10000
+        filtered_plans = random.sample(filtered_plans, 10000)
+        print("workload: ", workload, "filted plans: ", len(filtered_plans))
+        with open(os.path.join(ROOT_DIR, "data/training_workloads/{}".format(workload))+ "_filted.json", "w",) as f:
+            json.dump(filtered_plans, f)
+
     # test case
-    with open("data/workload1/walmart_filted.json", "r") as f:
+    with open("data/training_workloads/walmart_filted.json", "r") as f:
         content = f.readlines()
     for line in content:
         plans = json.loads(line)
     print(len(plans))
 
 
-def get_statistic():
-    plans = read_workload_runs(
-        ROOT_DIR + "data/workload1", db_names=workloads, verbose=True
-    )
+def get_feature_statistics():
+    plans = read_workload_runs(ROOT_DIR + "data/workload1", db_names=workloads, verbose=True)
 
     # get statistics
     db_plans = {}
@@ -91,7 +84,7 @@ def get_statistic():
             "min": float(np.min(runtimes)),
             "center": float(np.median(runtimes)),
             "scale": float(np.quantile(runtimes, 0.75))
-            - float(np.quantile(runtimes, 0.25)),
+                     - float(np.quantile(runtimes, 0.25)),
         },
         "Plan Rows": {
             "type": str(FeatureType.numeric),
@@ -119,22 +112,11 @@ def get_statistic():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--filter_plans",
-        action="store_true",
-        help="filter plans (we filter out plans with runtime < 100))",
-    )
-    parser.add_argument(
-        "--get_statistic", action="store_true", help="get filter plans statistic"
-    )
-
+    parser.add_argument("--filter_plans", action="store_true",  help="filter plans (we filter out plans with runtime < 100))",)
+    parser.add_argument("--get_statistic", action="store_true", help="get filter plans statistic")
     args = parser.parse_args()
-
-    # transform args to configs
     configs = vars(args)
-
-    # filter plans
     if configs["filter_plans"]:
         filter_plans()
     if configs["get_statistic"]:
-        get_statistic()
+        get_feature_statistics()

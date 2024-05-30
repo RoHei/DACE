@@ -6,7 +6,7 @@ import os
 import pickle
 
 
-ROOT_DIR = "/data1/liangzibo/dace/"
+ROOT_DIR = "/Users/rheinrich/Projekte/DACE/"
 
 plan_parameters = [
     "Node Type",
@@ -92,7 +92,7 @@ def getModelSize(model):
 
 
 def get_workload_paths(workload):
-    workload_file_dir = "data/workload1"
+    workload_file_dir = "data/training_workloads"
     workload_file_dir = os.join(ROOT_DIR, workload)
     path_list = os.listdir(workload_file_dir)
     for dbtype in path_list:
